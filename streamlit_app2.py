@@ -11,7 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 # Load embeddings and vector database
 embeddings_10_percent = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2",
-    model_kwargs={'token': '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'}
+    model_kwargs={'token': st.secrets["API_KEY1"]}
 )
 
 vector_db_10_percent = Chroma(
@@ -24,7 +24,7 @@ vector_db_10_percent = Chroma(
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-pro-002",
     temperature=0.3,
-    google_api_key="AIzaSyDOGNoA-G1ceO6rW0S_ujw6Y0opowIQGf8"  # Replace with your actual API key
+    google_api_key=st.secrets["API_KEY2"]
 )
 
 # Create retriever and prompt template
@@ -39,7 +39,6 @@ Question: {question}
 Answer:"""
 rag_prompt = ChatPromptTemplate.from_template(prompt_template)
 
-# Build RAG chain
 rag_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff",
@@ -48,21 +47,16 @@ rag_chain = RetrievalQA.from_chain_type(
     return_source_documents=True
 )
 
-# Streamlit app title
 st.title("Movie Subtitle Q&A (Voice + Text)")
 
-# Initialize question variable to avoid NameError
-question = ""  # Define question as an empty string by default
+question = ""  
 
-# User choice: Text or Audio input
 input_mode = st.radio("Choose your input method:", ["Text", "Audio"])
 
 if input_mode == "Text":
-    # Text input mode: Show a text input field
     question = st.text_input("Enter your question:", key="text_input")
     
 elif input_mode == "Audio":
-    # Audio input mode: Show recording buttons
     st.write("Click below to record your question:")
     
     audio = mic_recorder(
@@ -75,27 +69,23 @@ elif input_mode == "Audio":
         # Play recorded audio for confirmation
         st.audio(audio["bytes"], format="audio/wav")
         
-        # Transcribe audio to text using Whisper ASR pipeline
         try:
             transcriber = pipeline(
                 "automatic-speech-recognition",
-                model="openai/whisper-base",  # Use Hugging Face Whisper model
+                model="openai/whisper-base",
                 device="cuda:0" if torch.cuda.is_available() else "cpu"
             )
             transcription_result = transcriber(audio["bytes"])
             question = transcription_result["text"]
             
-            # Display transcribed text in the search bar for user confirmation/editing
             question = st.text_input("Transcribed Question:", value=question, key="audio_transcription")
         
         except Exception as e:
             st.error(f"Transcription failed: {str(e)}")
 
-# Process the query only when the user clicks "Submit"
 if st.button("Submit") and question:
     result = rag_chain.invoke({"query": question})
     
-    # Display the answer
     st.write(f"**Answer:** {result['result']}")
 
     # Display relevant contexts if available
