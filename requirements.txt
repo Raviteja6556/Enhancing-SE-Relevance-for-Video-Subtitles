@@ -1,0 +1,8 @@
+streamlit
+transformers
+streamlit-mic-recorder
+torch
+langchain
+langchain-google-genai
+chromadb
+huggingface-hub
